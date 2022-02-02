@@ -140,7 +140,8 @@ emeLogConstructor.buildObjectItem = function(data, indent) {
 	    var num;
         while (data.values.length > 0) {
             convertedData +=
-            '\n' + getIndentString(indent) + "| "; //+ data.values.splice(0, 20);
+            '\n' + getIndentString(indent) + data.values.splice(0, 20);
+            /*
             // CUSTOM HEXDUMP
             tmp = data.values.splice(0, 16);
             var old_len = tmp.length;
@@ -168,6 +169,7 @@ emeLogConstructor.buildObjectItem = function(data, indent) {
                     convertedData +=  String.fromCharCode(num);
                 }
             }
+            */
         }
             break;
 	case 'Object':

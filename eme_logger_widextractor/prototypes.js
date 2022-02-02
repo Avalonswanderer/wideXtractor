@@ -16,6 +16,61 @@
  * @fileoverview Defines prototypes for EME method calls and events.
  */
 
+function hexdump(buffer, blockSize) {
+  
+  if(typeof buffer === 'string'){
+  }else if(buffer instanceof ArrayBuffer && buffer.byteLength !== undefined){
+    buffer = String.fromCharCode.apply(String, [].slice.call(new Uint8Array(buffer)));
+  }else if(Array.isArray(buffer)){
+    buffer = String.fromCharCode.apply(String, buffer);
+  }else if (buffer.constructor === Uint8Array) {
+    buffer = String.fromCharCode.apply(String, [].slice.call(buffer));
+  }else{
+    console.log("Error: buffer is unknown...");
+    return false;
+  }
+
+  blockSize = blockSize || 16;
+    var lines = [];
+    var hex = "0123456789ABCDEF";
+    for (var b = 0; b < buffer.length; b += blockSize) {
+        var block = buffer.slice(b, Math.min(b + blockSize, buffer.length));
+        var addr = ("0000" + b.toString(16)).slice(-4);
+        var codes = block.split('').map(function (ch) {
+            var code = ch.charCodeAt(0);
+            return " " + hex[(0xF0 & code) >> 4] + hex[0x0F & code];
+        }).join("");
+        codes += "   ".repeat(blockSize - block.length);
+        //var chars = block.replace(/[\x00-\x1F\x20]/g, '.');
+        var chars = block.replace(/[\x00-\x1F]|[\x7f-\xff]/g, '.');
+        chars +=  " ".repeat(blockSize - block.length);
+        lines.push(addr + " " + codes + "  " + chars);
+    }
+    return lines.join("\n");
+}
+
+function WideXtractorFormatter() {
+  this.isKeySystemSupported = function (keySystem) {
+    return keySystem == "com.widevine.alpha";
+  }
+
+  this.formatUpdateCall = function (response) {
+    return "WideXtractor UpdateCall: " + '\n' + hexdump(response, 16);
+  }
+  this.formatmessage = function (message) {
+    return "WideXtractor MessageEvent: " + '\n' + hexdump(message, 16);
+  }
+
+  this.formatAddKeyCall = function (key) {
+    return "WideXtractor AddKeyCall: " + key;
+  }
+
+}
+
+if (!document.emeFormatters)
+  document.emeFormatters = [];
+document.emeFormatters.push(new WideXtractorFormatter);
+
 var emeLogger = {};
 
 
