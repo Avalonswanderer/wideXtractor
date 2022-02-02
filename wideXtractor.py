@@ -6,6 +6,9 @@ import sys
 import os
 from pathlib import Path
 
+# Global var for module script
+modules = []
+
 def usage():
     print(sys.argv[0] + " [legacy]\n\nlegacy -> Android before version 7")
 
@@ -34,7 +37,7 @@ def write2file(header, data, folder):
         os.makedirs(folder)
         
     fileName = folder + header + str(int(round(time.time() * 1000))) + ".bin";
-    print("\t\t[+] Writing buffer to file: " + fileName)
+    print("\n[+] Writing buffer to file: " + fileName + '\n')
     f = open(fileName, 'wb')
     f.write(data)
     f.close()
@@ -46,28 +49,67 @@ def onMessage(message, data):
         if (typ == "buffer"):
             if tag2 == '':
                 tag2 = tag
-                folder = "./" + tag + "_buffers/"
+                folder = "./out/" + tag + "_buffers/"
             else:
-                folder = "./" + tag + "_buffers/" + tag2 + "/"
+                folder = "./out/" + tag + "_buffers/" + tag2 + "/"
             buffer = bytearray([c for c in data])
             write2file(tag2 + "_buffer_", buffer, folder)
     else:
-        print(message, file=sys.stderr)    
+        print(message, file=sys.stderr)
+        
+def on_message_lib(message, data):
+    global modules
+    if message["type"] == "send":
+        modules.append(message['payload'])
 
+
+def get_wv_module(modules, mediadrm):
+    widevine_libs = {'libwvdrmengine.so',
+                     'libwvhidl.so',
+                     'libwvdrm_L1.so',
+                     'libdrmwvmplugin.so',
+                     'libWVStreamControlAPI_L1.so',
+                     'libmediadrm.so',
+                     'libwvm.so'}
+    wv_module = None
+    for lib in widevine_libs:
+        if lib in modules:
+            wv_module = lib
+    if wv_module == None:
+        print("No Widevine Module in {}.".format(mediadrm), file=sys.stderr)
+        exit(-1)
+    return wv_module
+        
+        
 def main():
+    global modules
     device = frida.get_usb_device()
     mediadrm = get_mediadrm_name()
     session = device.attach(mediadrm)
     print("[+] Attached to " + mediadrm)
 
-    print("[+] Processing Frida JS scripts")
+    script = session.create_script("""
+    Process.enumerateModules({
+          onMatch: function(module){
+	    send(module.name);
+	  }, 
+            onComplete: function(){}
+	});
+        """)
+
+    script.on('message', on_message_lib)
     
+    print("[+] Searching Widevine Module in {}.".format(mediadrm))
+    script.load()
+    wv_module = get_wv_module(modules, mediadrm)
+    print("[+] Widevine Module {} found.".format(wv_module))
+    
+    print("[+] Processing Frida JS scripts")
     script_data = ""
-    lib = "libwvdrmengine.so"
     for p in Path("js/hooks").glob('*.js'):
         with p.open() as f:
             symbol = str(p).split("/")[-1].split(".js")[0]
-            script_data += "Math.sin = Module.findExportByName('{}', '{}');if (Math.sin != null) {{Interceptor.attach(Math.sin, {});}}\n\n".format(lib, symbol, f.read())
+            script_data += "Math.sin = Module.findExportByName('{}', '{}');if (Math.sin != null) {{Interceptor.attach(Math.sin, {});}}\n\n".format(wv_module, symbol, f.read())
 
     script_instance = session.create_script(script_data);
     script_instance.on('message', onMessage)
