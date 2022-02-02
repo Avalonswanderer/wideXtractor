@@ -1,0 +1,37 @@
+{
+  "name": "EME Logger with WideXtractor",
+  "short_name": "EME log WideXtractor",
+  "version": "2.2.0",
+  "manifest_version": 2,
+  "description": "Logs all Encrypted Media Extensions (EME) method calls and events.",
+  "content_scripts": [{
+    "matches": [
+      "http://*/*",
+      "https://*/*",
+      "file://*"
+    ],
+    "js": ["content_script.js"],
+    "all_frames": true,
+    "run_at": "document_start"
+  }],
+  "icons": {
+    "22": "EME_logo_22.png",
+    "32": "EME_logo_32.png",
+    "48": "EME_logo_48.png",
+    "96": "EME_logo_96.png",
+    "128": "EME_logo_128.png"
+  },
+  "background" : {
+    "scripts": ["log_constructor.js"]
+  },
+  "browser_action": {
+    "default_title": "EME Logger",
+    "default_popup": "popup.html"
+  },
+  "permissions": ["unlimitedStorage"],
+  "web_accessible_resources": [
+    "mutation-summary.js",
+    "prototypes.js",
+    "eme_listeners.js"
+  ]
+}
